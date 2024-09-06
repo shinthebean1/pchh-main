@@ -33,8 +33,6 @@ $infofile = "$File\specs-programs.txt"
 
 $ziptar = "$File\Crashlog-Files_$random.zip"
 
-$transcript = "$env:temp\crashlog_transcript.txt"
-
 $sys_eventlog_path = "$File\system_eventlogs.evtx"
 
 $dmpfound = $false
@@ -66,7 +64,6 @@ $null = New-Module {
 }
 
 function dmpcheck {
-    Start-Transcript "$transcript" -Force > $null 2>&1
     Clear-Host 
     Write-Host ""
     Write-Host "============================================" -ForegroundColor DarkGreen
@@ -238,29 +235,32 @@ function eventlogexport {
 function compression {
     Write-Host ""
     Write-Host "Compressing files.."
+    Write-Host "This may take a minute or so.."
 
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl" -Name "DisplayParameters" -Value 1 -Type DWord -Force | Out-Null
+    
+    Invoke-WithoutProgress {
+        Install-Module -Name 7Zip4Powershell -Force -AllowClobber > $null 2>&1
+    }
 
-    $filesToCompress = @($infofile, $sys_eventlog_path)
+    Compress-7Zip -Path $infofile -Format Zip -ArchiveFileName $ziptar
+    Compress-7Zip -Path $sys_eventlog_path -Format Zip -ArchiveFileName $ziptar -Append
 
     if ($dmpfound) {
-        $filesToCompress += Get-ChildItem -Path $source
+        Compress-7Zip (Get-ChildItem -Path $source | Select-Object -ExpandProperty FullName) -Format Zip -ArchiveFileName $ziptar -Append
     }
-
     if ($kerneldmpfound) {
-        $filesToCompress += $kernelFile
+        Compress-7Zip -Path $kernelFile -Format Zip -ArchiveFileName $ziptar -Append -PreserveDirectoryRoot
     }
-
-            Compress-Archive -Path $filesToCompress -CompressionLevel Optimal -DestinationPath $ziptar -Force
 
     Remove-Item -Path $infofile, $sys_eventlog_path, $kernelFile -Force -Recurse -ErrorAction SilentlyContinue > $null 2>&1
-
-    pause
 
     Write-Host "File compression complete.." -ForegroundColor Green
 
     eof
 }
+
+
 
 function eof {
     Write-Host ""
@@ -296,12 +296,6 @@ function endmessage {
     if ($eofcomplete) {
         Add-Type -AssemblyName System.Windows.Forms
         [System.Windows.Forms.Clipboard]::SetFileDropList([System.Collections.Specialized.StringCollection]@($ziptar))
-
-        Stop-Transcript -ErrorAction SilentlyContinue | Out-Null
-
-        if (Test-Path $transcript) {
-        Compress-Archive -Path "$transcript" -DestinationPath "$ziptar" -Update | Out-Null
-        }
     }
         
     $null = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
