@@ -251,17 +251,11 @@ function compression {
         $filesToCompress += $kernelFile
     }
 
-    try {
-        Invoke-WithoutProgress {
             Compress-Archive -Path $filesToCompress -CompressionLevel Optimal -DestinationPath $ziptar -Force | Out-Null
-        }
-    }
-    catch {
-        $errors.Compress = $true
-        functionerror
-    }
 
     Remove-Item -Path $infofile, $sys_eventlog_path, $kernelFile -Force -Recurse -ErrorAction SilentlyContinue > $null 2>&1
+
+    pause
 
     Write-Host "File compression complete.." -ForegroundColor Green
 
