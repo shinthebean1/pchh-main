@@ -236,11 +236,12 @@ function compression {
     Write-Host ""
     Write-Host "Compressing files.."
     Write-Host "This may take a minute or so.."
+    Write-Host ""
 
     Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\CrashControl" -Name "DisplayParameters" -Value 1 -Type DWord -Force | Out-Null
     
     Invoke-WithoutProgress {
-        Install-Module -Name 7Zip4Powershell -Force -AllowClobber > $null 2>&1
+        Install-Module -Name 7Zip4Powershell -Force -AllowClobber -WarningAction SilentlyContinue -ErrorAction SilentlyContinue > $null 2>&1
     }
 
     Compress-7Zip -Path $infofile -Format Zip -ArchiveFileName $ziptar
